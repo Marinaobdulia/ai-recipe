@@ -1,0 +1,29 @@
+# requirements.txt
+
+# LangChain core
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+langgraph>=0.2.0
+
+# OpenAI
+openai>=1.30.0
+
+# Notion
+notion-client>=3.0.0
+
+# Google APIs
+google-api-python-client>=2.130.0
+google-auth>=2.29.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# PDF extraction (digital PDFs)
+pdfplumber>=0.11.0
+
+# PDF OCR fallback (scanned PDFs)
+pdf2image>=1.17.0
+pytesseract>=0.3.10
+
+# Environment variables
+python-dotenv>=1.0.0
