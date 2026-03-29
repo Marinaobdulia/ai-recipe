@@ -11,7 +11,7 @@ A LangChain AI agent that answers **"What should I cook today?"** by combining:
 ## Project Structure
 
 ```
-recipe_agent/
+ai-recipe/
 ├── agent.py                  # Main entry point
 ├── tools/
 │   ├── notion_tools.py       # get_recipe_list + get_recipe_details
@@ -19,8 +19,10 @@ recipe_agent/
 │   └── drive_tools.py        # get_available_ingredients (PDF tickets)
 ├── auth/
 │   ├── google_auth.py        # Run once to generate token.json
-│   └── credentials.json      # ← You provide this (from Google Cloud)
-├── .env.example              # Copy to .env and fill in your values
+│   ├── credentials.json      # ← You provide this (from Google Cloud)
+│   └── token.json            # Auto-generated after first auth (do not commit)
+├── .env                      # Fill in your API keys and IDs
+├── .gitignore
 └── requirements.txt
 ```
 
@@ -100,10 +102,6 @@ A `auth/token.json` file will be created — the agent uses this automatically f
 
 ### 4. Configure environment variables
 
-```bash
-cp .env.example .env
-```
-
 Edit `.env` and fill in:
 
 | Variable | Where to find it |
@@ -136,12 +134,13 @@ python agent.py
 Example output:
 ```
 ============================================================
-🍽️  TODAY'S RECOMMENDATION
+🍽️  RECOMENDACIÓN DEL DÍA
 ============================================================
-I'd suggest making **Pasta e Fagioli** tonight! You haven't
-had it in over two weeks, and you recently bought canned
-beans, pasta, and tomatoes — so you have everything you need.
-It's hearty, quick, and perfect for a weekday dinner.
+Te sugiero que hagas **Pasta e Fagioli** esta noche. No la
+comes hace más de dos semanas, y recientemente compraste
+lentejas, pasta y tomates — tienes todo lo necesario.
+Es un plato sustancioso, rápido y perfecto para una cena
+entre semana.
 ============================================================
 ```
 
@@ -151,16 +150,17 @@ It's hearty, quick, and perfect for a weekday dinner.
 
 1. **get_recent_meals** → finds what you've eaten in the last 14 days
 2. **get_recipe_list** → fetches all recipe names from Notion
-3. **get_available_ingredients** → reads your last 5 supermarket ticket PDFs
-4. Shortlists 2–3 recipes that haven't been made recently and match available ingredients
+3. **get_available_ingredients** → reads your last 2 supermarket ticket PDFs
+4. Shortlists 2–3 recipes that haven't been made in the last 4 days and match available ingredients
 5. **get_recipe_details** → reads the page body for each candidate to confirm ingredients
-6. Returns ONE recommendation with a friendly explanation
+6. Returns ONE recommendation with a friendly explanation in Spanish
 
 ---
 
-## Tips
+## Customization
 
-- **Add meals to Calendar** as all-day events with the recipe name as the title.
-- **Drop PDF tickets** into your Drive folder after each supermarket trip.
-- You can adjust `LOOKBACK_DAYS` in `calendar_tools.py` (default: 14 days).
-- You can adjust `MAX_TICKETS` in `drive_tools.py` (default: last 5 tickets).
+You can adjust timing and limits in the code:
+
+- **`LOOKBACK_DAYS`** in `tools/calendar_tools.py` (default: 14 days) — how far back to check for eaten meals
+- **`MAX_TICKETS`** in `tools/drive_tools.py` (default: 2) — how many recent PDFs to read for ingredients
+- **System prompt** in `agent.py` — modify the reasoning logic or the final language (currently Spanish)
