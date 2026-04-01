@@ -27,3 +27,6 @@ pytesseract>=0.3.10
 
 # Environment variables
 python-dotenv>=1.0.0
+
+# Telegram bot
+python-telegram-bot==20.7
