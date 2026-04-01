@@ -10,7 +10,7 @@ langgraph>=0.2.0
 openai>=1.30.0
 
 # Notion
-notion-client>=3.0.0
+notion-client>=2.4.0
 
 # Google APIs
 google-api-python-client>=2.130.0
