@@ -63,8 +63,7 @@ def build_agent():
         prompt=SYSTEM_PROMPT,
     )
 
-
-def main():
+def run_agent():
     agent = build_agent()
 
     response = agent.invoke({
@@ -72,7 +71,11 @@ def main():
     })
 
     # The final answer is the last message in the response
-    final_message = response["messages"][-1].content
+    return response["messages"][-1].content
+
+
+def main():
+    final_message = run_agent()
 
     print("\n" + "=" * 60)
     print("🍽️  RECOMENDACIÓN DEL DÍA")
