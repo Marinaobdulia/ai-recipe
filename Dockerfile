@@ -18,5 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el resto del código
 COPY . .
 
-# Comando de arranque (ajústalo si tu entrypoint es distinto)
-CMD ["python", "agent.py"]
+# Comando de arranque
+CMD ["python", "bot.py"]
