@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  ai-recipe:
+    image: ghcr.io/marinaobdulia/ai-recipe:latest
+    container_name: ai-recipe
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./data:/app/data
