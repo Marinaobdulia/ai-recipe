@@ -111,6 +111,7 @@ Edit `.env` and fill in:
 | `NOTION_DB_ID` | Notion database URL |
 | `MEALS_CALENDAR_ID` | Google Calendar → Settings → your calendar → Calendar ID |
 | `DRIVE_FOLDER_ID` | Google Drive folder URL (the last part after `/folders/`) |
+| `TELEGRAM_TOKEN` | Telegram bot token |
 
 ---
 
