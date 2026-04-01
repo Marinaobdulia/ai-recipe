@@ -16,7 +16,8 @@ async def receta(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🍳 Pensando qué puedes cocinar hoy...")
 
     try:
-        result = run_agent()
+        #result = run_agent()
+        result = "this is a test"
         await update.message.reply_text(result)
 
     except Exception as e:
