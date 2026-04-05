@@ -9,8 +9,14 @@ Compatible with notion-client 2.x (current stable as of March 2026).
 """
 
 import os
+from datetime import datetime, timedelta
 from langchain.tools import tool
 from notion_client import Client
+
+
+# Cache for recipe list: (timestamp, data)
+_recipe_list_cache = {}
+CACHE_TTL_SECONDS = 3600  # 1 hour
 
 
 def _get_notion_client() -> Client:
@@ -46,14 +52,12 @@ def _extract_text_from_blocks(blocks: list) -> str:
             line = "".join(t["plain_text"] for t in rich_text)
 
             if block_type == "bulleted_list_item":
-                line = f"  • {line}"
+                line = f"• {line}"
             elif block_type == "numbered_list_item":
-                line = f"  - {line}"
-            elif block_type.startswith("heading"):
-                line = f"\n### {line}"
+                line = f"- {line}"
             elif block_type == "to_do":
                 checked = block.get("to_do", {}).get("checked", False)
-                line = f"  [{'x' if checked else ' '}] {line}"
+                line = f"[{'x' if checked else ' '}] {line}"
 
             if line.strip():
                 lines.append(line)
@@ -86,6 +90,12 @@ def get_recipe_list() -> str:
     Returns the names of ALL recipes in the Notion recipe database.
     Use this first to see what recipes are available before fetching details.
     """
+    # Check cache
+    global _recipe_list_cache
+    now = datetime.now()
+    if _recipe_list_cache and (now - _recipe_list_cache["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+        return _recipe_list_cache["data"]
+    
     try:
         notion = _get_notion_client()
         db_id = os.environ["NOTION_DB_ID"]
@@ -101,12 +111,16 @@ def get_recipe_list() -> str:
             names.extend(_get_title_from_page(p) for p in results["results"])
 
         if not names:
-            return "No recipes found in the Notion database."
+            result = "No recipes found."
+        else:
+            result = ", ".join(names)
 
-        return "Recipes available:\n" + "\n".join(f"- {n}" for n in names)
+        # Cache the result
+        _recipe_list_cache = {"timestamp": now, "data": result}
+        return result
 
     except Exception as e:
-        return f"Error fetching recipe list from Notion: {e}"
+        return f"Error fetching recipe list: {e}"
 
 
 @tool
@@ -126,7 +140,7 @@ def get_recipe_details(recipe_name: str) -> str:
         results = notion.databases.query(
             database_id=db_id,
             filter={
-                "property": "Name",   # Change if your title property has a different name
+                "property": "Name",
                 "title": {
                     "contains": recipe_name
                 }
@@ -134,10 +148,7 @@ def get_recipe_details(recipe_name: str) -> str:
         )
 
         if not results["results"]:
-            return (
-                f"Recipe '{recipe_name}' not found in Notion. "
-                "Try using get_recipe_list to see exact names."
-            )
+            return f"Recipe '{recipe_name}' not found."
 
         page = results["results"][0]
         title = _get_title_from_page(page)
@@ -147,9 +158,9 @@ def get_recipe_details(recipe_name: str) -> str:
         body = _extract_text_from_blocks(blocks_response["results"])
 
         if not body.strip():
-            return f"Recipe '{title}' was found but its page appears to be empty."
+            return f"{title}\n(No content)"
 
-        return f"=== {title} ===\n\n{body}"
+        return f"{title}\n{body}"
 
     except Exception as e:
-        return f"Error fetching recipe details from Notion: {e}"
+        return f"Error fetching recipe: {e}"

@@ -7,7 +7,7 @@ and extracts purchased ingredients using two strategies:
   1. pdfplumber  — fast text extraction for digital/native PDFs
   2. OCR fallback — pdf2image + pytesseract for scanned/image-based PDFs
 
-The extracted text is then summarised by GPT-4o into a clean ingredient list.
+The extracted text is then summarised by GPT-4o-mini into a clean ingredient list.
 
 Setup:
   - Enable the Google Drive API in Google Cloud Console
@@ -22,6 +22,7 @@ Setup:
 import os
 import io
 import tempfile
+import datetime
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from googleapiclient.discovery import build
@@ -32,6 +33,10 @@ from google.auth.transport.requests import Request
 TOKEN_PATH = "auth/token.json"
 MAX_TICKETS = 2          # How many recent PDFs to read
 MIN_TEXT_LENGTH = 50     # Characters threshold to decide if OCR is needed
+
+# Cache for ingredients: (timestamp, data)
+_ingredients_cache = {}
+CACHE_TTL_SECONDS = 3600  # 1 hour
 
 
 def _get_drive_service():
@@ -110,23 +115,19 @@ def _extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 def _summarise_ingredients(raw_texts: list[str]) -> str:
     """
-    Sends the raw receipt texts to GPT-4o and asks it to extract
+    Sends the raw receipt texts to GPT-4o-mini (cheaper than GPT-4o) and asks it to extract
     a clean, deduplicated list of food ingredients/products.
     """
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
     combined = "\n\n---\n\n".join(raw_texts)
 
-    prompt = f"""The following text was extracted from one or more supermarket receipts.
-    
-Please extract all food products and ingredients mentioned.
-- Ignore non-food items (cleaning products, toiletries, etc.)
+    prompt = f"""Extract food products from supermarket receipts.
+- Ignore non-food items
 - Deduplicate similar items
-- Return a clean comma-separated list, nothing else
+- Return comma-separated list only
 
-Receipt text:
-{combined}
-"""
+{combined}"""
     response = llm.invoke([{"role": "user", "content": prompt}])
     return response.content.strip()
 
@@ -134,11 +135,15 @@ Receipt text:
 @tool
 def get_available_ingredients() -> str:
     """
-    Reads the most recent supermarket ticket PDFs from Google Drive and returns
-    a list of food products/ingredients that were recently purchased.
-    Both digital PDFs and scanned/image PDFs are supported.
-    Use this to tailor recipe recommendations to what is likely available at home.
+    Reads recent supermarket ticket PDFs from Google Drive and returns
+    a list of recently purchased food ingredients.
     """
+    # Check cache
+    global _ingredients_cache
+    now = datetime.datetime.utcnow()
+    if _ingredients_cache and (now - _ingredients_cache["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+        return _ingredients_cache["data"]
+    
     try:
         service = _get_drive_service()
 
@@ -157,7 +162,9 @@ def get_available_ingredients() -> str:
         files = results.get("files", [])
 
         if not files:
-            return "No supermarket ticket PDFs found in the Google Drive folder."
+            result = "No recent ticket PDFs."
+            _ingredients_cache = {"timestamp": now, "data": result}
+            return result
 
         print(f"  [drive_tools] Found {len(files)} PDF ticket(s) to process")
 
@@ -168,7 +175,7 @@ def get_available_ingredients() -> str:
                 pdf_bytes = _download_pdf_bytes(service, f["id"])
                 text = _extract_text_from_pdf(pdf_bytes)
                 if text.strip():
-                    raw_texts.append(f"# Ticket: {f['name']} ({f['createdTime'][:10]})\n{text}")
+                    raw_texts.append(f"# {f['name']}\n{text}")
                 else:
                     print(f"  [drive_tools] Warning: no text extracted from {f['name']}")
             except Exception as e:
@@ -176,10 +183,16 @@ def get_available_ingredients() -> str:
                 continue
 
         if not raw_texts:
-            return "Could not extract text from any of the ticket PDFs."
+            result = "Could not extract text from PDFs."
+            _ingredients_cache = {"timestamp": now, "data": result}
+            return result
 
         ingredients = _summarise_ingredients(raw_texts)
-        return f"Recently purchased ingredients (from last {len(raw_texts)} ticket(s)):\n{ingredients}"
+        result = f"Ingredients: {ingredients}"
+        
+        # Cache the result
+        _ingredients_cache = {"timestamp": now, "data": result}
+        return result
 
     except Exception as e:
-        return f"Error reading supermarket tickets from Google Drive: {e}"
+        return f"Error reading tickets: {e}"
