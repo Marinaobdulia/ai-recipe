@@ -165,3 +165,11 @@ You can adjust timing and limits in the code:
 - **`LOOKBACK_DAYS`** in `tools/calendar_tools.py` (default: 14 days) — how far back to check for eaten meals
 - **`MAX_TICKETS`** in `tools/drive_tools.py` (default: 2) — how many recent PDFs to read for ingredients
 - **System prompt** in `agent.py` — modify the reasoning logic or the final language (currently Spanish)
+
+---
+
+## TO DO
+- Allow bot to write into the calendar a recipe told by the user.
+- Generate recipe choice for more than 1 day at the time.
+- Create shopping list based on the recipes chosen.
+- Regenerate response if user says they are missing ingredients.
