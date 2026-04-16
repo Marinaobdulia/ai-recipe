@@ -41,17 +41,21 @@ CACHE_TTL_SECONDS = 3600  # 1 hour
 
 def _get_drive_service():
     """Loads credentials from token.json and returns an authenticated Drive service."""
-    creds = Credentials.from_authorized_user_file(
-        TOKEN_PATH,
-        scopes=[
-            "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/calendar.readonly",
-        ]
-    )
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        with open(TOKEN_PATH, "w") as f:
-            f.write(creds.to_json())
+    creds = Credentials.from_authorized_user_file(TOKEN_PATH)
+    
+    # Proactive refresh: refresh if expired OR if expiry is within 5 minutes
+    if creds.expired or (creds.expiry and (creds.expiry - datetime.datetime.utcnow()).total_seconds() < 300):
+        if creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                # Save the refreshed token back to file
+                with open(TOKEN_PATH, "w") as f:
+                    f.write(creds.to_json())
+            except Exception as e:
+                print(f"  [drive_tools] Token refresh failed: {e}")
+                raise
+        else:
+            raise ValueError("No refresh_token available. Need to re-authenticate.")
 
     return build("drive", "v3", credentials=creds)
 
